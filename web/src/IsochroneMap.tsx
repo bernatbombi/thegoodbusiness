@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import type { Map as MLMap, MapMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
+
+// maplibre-gl instantiates its worker via a runtime variable, not a static
+// `new URL(...)` literal, so Vite can't auto-detect and bundle it — must
+// point it at the worker asset explicitly or production builds 404 on it.
+maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
