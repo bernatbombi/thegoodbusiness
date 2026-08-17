@@ -1,0 +1,3 @@
+# Downloaded OSM extracts and built tiles — fetch via download_extract.sh
+data/*
+!data/.gitkeep

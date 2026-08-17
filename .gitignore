@@ -1,0 +1,11 @@
+# OS / editor
+.DS_Store
+*.swp
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# env files (per-app .gitignore also covers these; keep root catch-all)
+.env
+.env.local
+.env.*.local

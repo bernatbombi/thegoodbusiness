@@ -1,0 +1,55 @@
+services:
+  valhalla:
+    build: ./valhalla
+    container_name: tgb-valhalla
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./valhalla/data:/custom_files
+      - valhalla_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10m
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: tgb-redis
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    container_name: tgb-api
+    environment:
+      - VALHALLA_URL=http://valhalla:8002
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      valhalla:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    container_name: tgb-web
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+
+volumes:
+  valhalla_data:
