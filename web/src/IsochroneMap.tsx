@@ -20,6 +20,14 @@ const CONTOUR_SOURCE = 'isochrone-source'
 type Mode = 'pedestrian' | 'auto'
 type Coord = { lat: number; lon: number }
 
+const CONTOUR_MINUTES = [5, 10, 15] as const
+const CONTOUR_COLORS: Record<number, string> = { 5: '#2ecc71', 10: '#f1c40f', 15: '#e74c3c' }
+
+type PlacesResult = {
+  total: number
+  types: { type: string; count: number }[]
+}
+
 export default function IsochroneMap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MLMap | null>(null)
@@ -31,6 +39,10 @@ export default function IsochroneMap() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+
+  const [places, setPlaces] = useState<Record<number, PlacesResult> | null>(null)
+  const [placesLoading, setPlacesLoading] = useState(false)
+  const [placesError, setPlacesError] = useState<string | null>(null)
 
   // Create the map once. Clicking just records the coordinate — fetching
   // is handled by the effect below, which always sees the latest mode/coord.
@@ -135,6 +147,39 @@ export default function IsochroneMap() {
     }
   }, [mapReady, selectedCoord, mode])
 
+  // Isochrone changed underneath us — any previously fetched places no
+  // longer correspond to the currently drawn contours.
+  useEffect(() => {
+    setPlaces(null)
+    setPlacesError(null)
+  }, [selectedCoord, mode])
+
+  const showPlaces = async () => {
+    setPlacesLoading(true)
+    setPlacesError(null)
+    try {
+      const results = await Promise.all(
+        CONTOUR_MINUTES.map(async (minutes) => {
+          const resp = await fetch(`${API_URL}/places/within`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...selectedCoord, mode, minutes }),
+          })
+          if (!resp.ok) {
+            const body = await resp.json().catch(() => ({}))
+            throw new Error(body.detail || `Request failed (${resp.status})`)
+          }
+          return [minutes, (await resp.json()) as PlacesResult] as const
+        })
+      )
+      setPlaces(Object.fromEntries(results))
+    } catch (e) {
+      setPlacesError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPlacesLoading(false)
+    }
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       <div
@@ -198,6 +243,81 @@ export default function IsochroneMap() {
           )}
           {error && <span style={{ color: '#dc2626' }}>{error}</span>}
         </div>
+
+        <button
+          type="button"
+          onClick={showPlaces}
+          disabled={loading || placesLoading}
+          style={{
+            marginTop: 10,
+            width: '100%',
+            border: 'none',
+            borderRadius: 6,
+            padding: '8px 0',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: loading || placesLoading ? 'default' : 'pointer',
+            background: '#111827',
+            color: 'white',
+            opacity: loading || placesLoading ? 0.6 : 1,
+          }}
+        >
+          {placesLoading ? 'Checking nearby places…' : 'What’s nearby?'}
+        </button>
+
+        {placesError && (
+          <div style={{ marginTop: 6, fontSize: 12.5, color: '#dc2626' }}>{placesError}</div>
+        )}
+
+        {places && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {CONTOUR_MINUTES.map((minutes) => {
+              const result = places[minutes]
+              if (!result) return null
+              return (
+                <div key={minutes}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      marginBottom: 3,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: CONTOUR_COLORS[minutes],
+                        display: 'inline-block',
+                      }}
+                    />
+                    {minutes} min — {result.total} places
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {result.types.slice(0, 6).map(({ type, count }) => (
+                      <span
+                        key={type}
+                        style={{
+                          background: '#eef0f2',
+                          borderRadius: 999,
+                          padding: '2px 8px',
+                          fontSize: 11.5,
+                          color: '#333',
+                        }}
+                      >
+                        {type.replaceAll('_', ' ')} ({count})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
     </div>

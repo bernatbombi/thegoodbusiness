@@ -1,6 +1,6 @@
 # TheGoodBusiness — Catalonia Isochrone Map
 
-Pedestrian/driving isochrone map for Catalonia. Stack: Valhalla (routing) + Redis (cache) + FastAPI (`api/`) + React/Vite (`web/`).
+Pedestrian/driving isochrone map for Catalonia. Stack: Valhalla (routing) + Redis (cache) + FastAPI (`api/`) + React/Vite (`web/`) + DuckDB/Overture Places (POI lookup).
 
 ## Prerequisites
 
@@ -18,7 +18,20 @@ Valhalla needs a Catalonia OSM extract before it can build tiles. Run once (and 
 
 Downloads `cataluna-latest.osm.pbf` (Geofabrik) into `valhalla/data/`.
 
-## 2. Env files
+## 2. Download Overture Places data (optional, for local dev)
+
+The `/places/within` endpoint (what types of places exist inside an isochrone) reads a local Catalonia-only extract of [Overture Maps](https://overturemaps.org/) Places. Requires the [DuckDB CLI](https://duckdb.org/docs/installation) on the host:
+
+```bash
+brew install duckdb   # or see the DuckDB install docs
+./overture/download_extract.sh
+```
+
+Downloads/filters into `overture/data/places_catalonia.duckdb` (~30MB, gitignored). Re-run to refresh — Overture ships monthly releases; the script pins an explicit release date, bump `RELEASE` in the script to update.
+
+This step is **not required for Docker deploys**: `api/Dockerfile` bakes the same extraction into the image at build time (`api/scripts/build_overture_db.py`), so `docker compose up` / any container deploy (Railway, etc.) works without it. Running the script locally just lets you refresh the data without rebuilding the image.
+
+## 3. Env files
 
 Copy the example env files and adjust if needed:
 
@@ -29,7 +42,7 @@ cp web/.env.example web/.env
 
 Defaults work for local Docker Compose setup as-is.
 
-## 3. Run (Docker Compose)
+## 4. Run (Docker Compose)
 
 ```bash
 docker compose up -d
@@ -79,10 +92,22 @@ npm ci
 npm run dev
 ```
 
+## API endpoints
+
+Full request/response docs: [Bruno collection](documentation/bruno) (`documentation/README.md` for usage).
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Valhalla reachability check |
+| `POST /isochrone` | 5/10/15 min walk/drive polygons around a point (Valhalla, Redis-cached) |
+| `POST /places/within` | Overture Places counts/types inside an isochrone contour (or an arbitrary polygon) |
+
 ## Project layout
 
 ```
-api/        FastAPI service (isochrone requests, Redis cache, Valhalla client)
-web/        React + Vite frontend (map UI)
-valhalla/   Valhalla routing engine: OSM data + entrypoint/build scripts
+api/            FastAPI service (isochrone + places requests, Redis cache, Valhalla client, Overture DuckDB)
+web/            React + Vite frontend (map UI)
+valhalla/       Valhalla routing engine: OSM data + entrypoint/build scripts
+overture/       Overture Places extraction script + local DuckDB data (gitignored)
+documentation/  Bruno API collection
 ```

@@ -1,0 +1,42 @@
+meta {
+  name: Post places within (polygon)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/places/within
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [2.15, 41.37],
+          [2.15, 41.40],
+          [2.19, 41.40],
+          [2.19, 41.37],
+          [2.15, 41.37]
+        ]
+      ]
+    }
+  }
+}
+
+docs {
+  Counts Overture Places (POIs) inside an arbitrary GeoJSON polygon — e.g. one
+  contour Feature's `geometry` plucked directly from an `/isochrone` response,
+  instead of re-looking it up by point/mode/minutes.
+
+  Body (polygon mode):
+  - `geometry` object, required — GeoJSON `Polygon` or `MultiPolygon`
+
+  Polygon's bbox must fall within the Catalonia bounding box or the request 400s.
+
+  See "Post places within (lookup)" for response shape and error codes — identical
+  for both input modes.
+}

@@ -1,0 +1,53 @@
+meta {
+  name: Post places within (lookup)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/places/within
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "lat": 41.3874,
+    "lon": 2.1686,
+    "mode": "pedestrian",
+    "minutes": 10
+  }
+}
+
+docs {
+  Counts Overture Places (POIs) inside a previously computed isochrone contour,
+  looked up by point/mode/minutes rather than passing the polygon directly.
+
+  Body (lookup mode):
+  - `lat` float, required, -90..90
+  - `lon` float, required, -180..180
+  - `mode` string, required, one of `pedestrian` | `auto`
+  - `minutes` int, required, one of `5 | 10 | 15` (matches `CONTOUR_MINUTES`)
+
+  Requires `/isochrone` to have been called first for this exact `lat/lon/mode`
+  (same rounding as the isochrone cache key) — the polygon is read from the
+  Redis cache, not recomputed. If not cached, 404.
+
+  See "Post places within (polygon)" for passing geometry directly instead.
+
+  Response:
+  {
+    "total": number,
+    "types": [{ "type": string, "count": number }],
+    "categories": [{ "category": string, "type": string, "count": number }]
+  }
+
+  - `categories` = raw Overture `categories.primary` values (fine-grained, e.g. `tapas_bar`)
+  - `types` = counts grouped by Overture's own `basic_category` field (coarser, e.g. `restaurant`, `bar`, `hotel`)
+  - Only places with `confidence >= OVERTURE_MIN_CONFIDENCE` (default 0.6) are counted
+
+  Errors:
+  - 400 coordinate/polygon outside Catalonia bbox
+  - 404 no cached isochrone for this lat/lon/mode, or no contour matching `minutes`
+  - 422 missing/invalid input (must provide either `geometry` or full `lat/lon/mode/minutes`)
+}

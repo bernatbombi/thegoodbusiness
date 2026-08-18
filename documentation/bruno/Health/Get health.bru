@@ -1,0 +1,19 @@
+meta {
+  name: Get health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  body: none
+  auth: none
+}
+
+docs {
+  Health check. Pings Valhalla's `/status` endpoint.
+
+  Responses:
+  - 200 `{ "status": "ok" }`
+  - 503 Valhalla unavailable
+}

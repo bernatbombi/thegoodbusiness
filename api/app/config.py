@@ -18,3 +18,8 @@ MODE_TO_COSTING = {
     "pedestrian": "pedestrian",
     "auto": "auto",
 }
+
+OVERTURE_DB_PATH = os.environ.get(
+    "OVERTURE_DB_PATH", "../overture/data/places_catalonia.duckdb"
+)
+OVERTURE_MIN_CONFIDENCE = 0.6

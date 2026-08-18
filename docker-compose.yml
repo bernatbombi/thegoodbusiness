@@ -26,6 +26,9 @@ services:
     environment:
       - VALHALLA_URL=http://valhalla:8002
       - REDIS_URL=redis://redis:6379/0
+      - OVERTURE_DB_PATH=/data/overture/places_catalonia.duckdb
+    volumes:
+      - ./overture/data:/data/overture:ro
     depends_on:
       valhalla:
         condition: service_healthy

@@ -1,0 +1,43 @@
+meta {
+  name: Post isochrone
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/isochrone
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "lat": 41.3874,
+    "lon": 2.1686,
+    "mode": "pedestrian"
+  }
+}
+
+docs {
+  Returns walk/drive-time isochrone polygons around a point, via Valhalla.
+
+  Body:
+  - `lat` float, required, -90..90
+  - `lon` float, required, -180..180
+  - `mode` string, required, one of `pedestrian` | `auto`
+
+  Point must fall within the Catalonia bounding box (`min_lat: 40.5, max_lat: 42.9, min_lon: 0.15, max_lon: 3.4`)
+  or the request 400s.
+
+  Contours computed: 5 / 10 / 15 minutes (see `CONTOUR_MINUTES` in `api/app/config.py`).
+
+  Response: GeoJSON `FeatureCollection`. Each Feature is one contour polygon with
+  `properties.contour` (minutes) and `properties.color`.
+
+  Cached in Redis for 1h, keyed by rounded lat/lon/mode — repeat calls with the
+  same input return instantly from cache.
+
+  Errors:
+  - 400 coordinate outside Catalonia bbox
+  - 502 Valhalla error
+}
